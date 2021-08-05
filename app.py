@@ -4,6 +4,10 @@ import os
 from flask import Flask
 from flask import request
 from dbconnect import connectdb
+from flask_cors import *
+
+
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 #提取图片并存贮在固定路径
 def save_image(img):
@@ -15,9 +19,9 @@ def save_image(img):
     img.save(file_path)
     url = '/static/img/'+imgName
     return url
-
 #拿到数据并且将数据插入数据库
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 @app.route("/robotmessage", methods=["POST"])
 def add_robotmessage():
     con = connectdb()
@@ -69,8 +73,13 @@ def add_taskmessage():
     begintime = get_data.get('begintime')
     startplace=get_data.get('startplace')
     endplace=get_data.get('endplace')
-    con.cursor.execute(f'''insert into task (robotid,endtime,begintime,startplace,endplace) VALUES ("{robotid}","{endtime}","{begintime}","{startplace}","{endplace}")''')
-    return_dict['result'] = "success"
+    in_sql=f'''insert into task (robotid,begintime,startplace,endplace) VALUES ("{robotid}","{begintime}","{startplace}","{endplace}")'''
+    s_sql=f'''select taskid from task where robotid="{robotid}" and begintime ="{begintime}"'''
+    con.cursor.execute(in_sql)
+    con.cursor.execute(s_sql)
+    results=con.cursor.fetchall()
+    print(results)
+    return_dict['result'] = results
     con.close()
     return json.dumps(return_dict, ensure_ascii=False)
 @app.route("/pointmessage", methods=["POST"])
@@ -101,86 +110,69 @@ def add_slammessage():
     # robotid = get_data.get('robotid')
     taskid = get_data.get('taskid')
     distance = get_data.get('distance')
-    distance = get_data.get('distance')
     type = get_data.get('type')
     time = get_data.get('time')
     mapname=get_data.get('mapname')
     deceleration=get_data.get('deceleration')   #减速度
     coordinate=get_data.get('coordinate') #坐标
-    con.cursor.execute(f'''insert into slam (taskid,distance,time,type,mapname,deceleration) VALUES ({taskid},"{distance}","{time}","{type}","{mapname}","{deceleration}","{coordinate}")''')
+    con.cursor.execute(f'''insert into slam (taskid,distance,time,type,mapname,deceleration,coordinate) VALUES ({taskid},"{distance}","{time}","{type}","{mapname}","{deceleration}",'{coordinate}')''')
     return_dict['result'] = "success"
     con.close()
     return json.dumps(return_dict, ensure_ascii=False)
 #根据机器编号和任务时间查询总任务
-@app.route("/get_task", methods=["POST"])
+@app.route("/get_task", methods=["GET"])
 def get_task():
     con = connectdb()
     return_dict = {'return_code': '200', 'return_info': '处理成功', 'result': None}
-    if len(request.get_data()) == 0:
-        return_dict['return_code'] = '5004'
-        return_dict['return_info'] = '请求参数为空'
+    if len(request.args) == 0:
+        return_dict["return_code"] = "5004"
+        return_dict["return_info"] = "请求参数为空"
         return json.dumps(return_dict, ensure_ascii=False)
-    get_data = request.values
+    get_data = request.args
     robotid = get_data.get('robotid')
     time = get_data.get('time')
-    sql_result = con.cursor.execute(f'''select taskid,robotid,endtime,begintime,startplace,endplace from task where robotid="{robotid}" and date(begintime)="{time}" ''')
-    result = con.cursor.fetchall()
-    data=f"'robotid':{robotid},'time':{time},'taskcount':{sql_result},'data':{result}"
-    return_dict['result'] = "{%s}"%(data)
+    sql_result = con.cursor.execute(f'''select taskid,robotid,date_format(endtime, '%Y-%m-%d %H:%i:%S')  endtime,date_format(begintime, '%Y-%m-%d %H:%i:%s') begintime,startplace,endplace from task where robotid={robotid} and DATE(begintime)="{time}" ''')
+    result = json.dumps(con.cursor.fetchall())
+    data=f'"robotid":"{robotid}","time":"{time}","taskcount":{sql_result},"data":{result}'
+    return_dict["result"] = "{%s}"%(data)
     con.close()
     return json.dumps(return_dict, ensure_ascii=False)
-@app.route("/get_map", methods=["POST"])
+@app.route("/get_map", methods=["GET"])
 def get_map():
     con = connectdb()
     return_dict = {'return_code': '200', 'return_info': '处理成功', 'result': None}
-    if len(request.get_data()) == 0:
+    if len(request.args) == 0:
         return_dict['return_code'] = '5004'
         return_dict['return_info'] = '请求参数为空'
         return json.dumps(return_dict, ensure_ascii=False)
     get_data = request.values
     robotid = get_data.get('robotid')
     mapname = get_data.get('mapname')
-    sql_result = con.cursor.execute(f'''select mapid,mapadress,mapname,createtime from map where robotid="{robotid}" and mapname="{mapname}" ''')
+    sql_result = con.cursor.execute(f'''select mapid,mapadress,mapname,date_format(createtime, '%Y-%m-%d %H:%i:%s') createtime from map where robotid="{robotid}" and mapname="{mapname}" ''')
     results = con.cursor.fetchall()
-    data=f"'robotid':{robotid},'data':{results}"
-    return_dict['result'] = "{%s}"%(data)
+    return_dict['result'] = results[0]
     con.close()
     return json.dumps(return_dict, ensure_ascii=False)
-@app.route("/get_slam", methods=["POST"])
+@app.route("/get_slam", methods=["GET"])
 def get_slam():
     con = connectdb()
     return_dict = {'return_code': '200', 'return_info': '处理成功', 'result': None}
-    if len(request.get_data()) == 0:
+    if len(request.args) == 0:
         return_dict['return_code'] = '5004'
         return_dict['return_info'] = '请求参数为空'
         return json.dumps(return_dict, ensure_ascii=False)
     get_data = request.values
     taskid = get_data.get('taskid')
-    time=get_data.get('time')
+    # starttime=get_data.get('starttime')
+    # endtime=get_data.get('endtime')
     type=get_data.get('type')
-    sql_result = con.cursor.execute(f'''SELECT type,mapname,deceleration,coordinate,time from slam where date(time)="{time}" AND type="{type}" AND taskid="{taskid}" ''')
+    sql_result = con.cursor.execute(f'''SELECT slamid,type,mapname,deceleration,coordinate,date_format(time, '%Y-%m-%d %H:%i:%s') time from slam where type="{type}" AND taskid="{taskid}" ''')
+    # AND time BETWEEN "{starttime}" AND "{endtime}"
     results = con.cursor.fetchall()
-    data=f"'count':{sql_result},'data':{results}"
-    return_dict['result'] = "{%s}"%(data)
+    # data=f'"count":{sql_result},"data":{results}'
+    return_dict['result'] = results
     con.close()
     return json.dumps(return_dict, ensure_ascii=False)
-# @app.route("/get_slam", methods=["POST"])
-# def get_slam():
-#     con = connectdb()
-#     return_dict = {'return_code': '200', 'return_info': '处理成功', 'result': None}
-#     if len(request.get_data()) == 0:
-#         return_dict['return_code'] = '5004'
-#         return_dict['return_info'] = '请求参数为空'
-#         return json.dumps(return_dict, ensure_ascii=False)
-#     get_data = request.values
-#     robotid = get_data.get('robotid')
-#     taskid = get_data.get('taskid')
-#     sql_result = con.cursor.execute(f'''select mapid,mapadress,mapname,createtime from map where robotid="{robotid}" and mapname="{taskid}" ''')
-#     results = con.cursor.fetchall()
-#     data=f"'robotid':{robotid},'data':{results}"
-#     return_dict['result'] = "{%s}"%(data)
-#     con.close()
-#     return json.dumps(return_dict, ensure_ascii=False)
 
 
 

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>map</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="header" style="position: relative;height: 170px; background-color: #eeeeee;padding-top:70px;">
+          机器人急停数量：{{result.count}}
+          机器人定位跳动次数：{{jump_result.count}}
+          机器人定位丢失次数：{{lose_result.count}}
+      </div>
+      <div>
+          <img id="pic">
+      </div>
+
+    </div>
+
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://cdn.staticfile.org/vue/2.2.2/vue.min.js"></script>
+    <script src="/path/to/vue-router.js"></script>
+    <script>
+      const app = new Vue({
+        el: "#app",
+        data: {
+          robotId: "1",
+          time: "2021-07-27",
+          result:"0",
+          jump_result:"0",
+          lose_result:"0",
+          map:[]
+          
+        },
+       created(){
+         fetch(
+           'http://127.0.0.1:5000/get_slam?type=急停&time=2021-07-29&taskid=1')
+           .then(Response=>Response.json())
+           .then(json=>{
+             const result=JSON.parse(json.result);
+             this.result=result;
+             console.log(result);
+           })
+           fetch('http://127.0.0.1:5000/get_slam?type=定位跳动&time=2021-07-29&taskid=1')
+           .then(Response=>Response.json())
+           .then(json=>{
+             const jump_result=JSON.parse(json.result);
+             this.jump_result=jump_result;
+           })
+           fetch('http://127.0.0.1:5000/get_slam?type=定位丢失&time=2021-07-29&taskid=1')
+           .then(Response=>Response.json())
+           .then(json=>{
+             const lose_result=JSON.parse(json.result);
+             this.lose_result=lose_result;
+           })
+           fetch('http://127.0.0.1:5000/get_map?mapname=1楼&robotid=1')
+           .then(Response=>Response.json())
+           .then(json=>{
+             const map_result=JSON.parse(json.result);
+             this.map_result=map_result;
+             this.map=map_result.data[0]
+             const url=".."+this.map.mapadress+"";
+             console.log(url)
+             document.getElementById("pic").src = url;
+           })
+          
+
+
+
+       }
+      });
+    </script>
+  </body>
+</html>

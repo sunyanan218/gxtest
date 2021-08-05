@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>tasklist</title>
+
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://cdn.staticfile.org/vue/2.2.2/vue.min.js"></script>
+    <script src="/path/to/vue-router.js"></script>
+  </head>
+  <style>
+    .form {
+      background-color: rgb(238, 238, 238);
+      padding: 32px;
+    }
+    .taskLine {
+      cursor: pointer;
+      color: blue;
+    }
+  </style>
+  <body>
+    <div id="app">
+      <div class="form">
+        <input
+          type="text"
+          name="robot_id"
+          value="请输入机器人编号"
+          v-model="robotId"
+          style="height: 28px; width: 150px; align: center"
+        />
+        <input
+          type="text"
+          name="time"
+          v-model="time"
+          value="请选择时间"
+          style="height: 28px; width: 150px; align: center"
+        />
+        <button @click.prevent="onSearch">查询</button>
+      </div>
+      <div class="tasks">
+        <table>
+          <tr>
+            <th>任务编号</th>
+            <th>机器人编号</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>开始地点</th>
+            <th>结束地点</th>
+            <th>操作</th>
+          </tr>
+          <tr v-for="task in tasks">
+            <td>{{task.taskid}}</td>
+            <td>{{task.robotid}}</td>
+            <td>{{task.begintime}}</td>
+            <td>{{task.endtime}}</td>
+            <td>{{task.startplace}}</td>
+            <td>{{task.endplace}}</td>
+            <td
+              @click="onClickTask(task.taskid,task.robotid,task.begintime)"
+              class="taskLine"
+            >
+              任务路径
+            </td>
+          </tr>
+        </table>
+        <p>任务总数:{{count}}</p>
+      </div>
+    </div>
+    <script>
+      const app = new Vue({
+        el: "#app",
+        data: {
+          tasks: [],
+          robotId: "1",
+          time: "2021-07-27",
+          count: 0,
+        },
+        methods: {
+          onSearch() {
+            fetch(
+              `http://127.0.0.1:5000/get_task?robotid=${this.robotId}&time=${this.time}`
+            )
+              .then((response) => response.json())
+              .then((json) => {
+                const result = JSON.parse(json.result);
+                this.result = result;
+                this.tasks = result.data;
+                this.count = result.taskcount;
+                console.log(result.taskcount);
+              });
+          },
+          onClickTask(taskId, robotid, begintime) {
+            console.log(begintime);
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
